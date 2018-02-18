@@ -1,0 +1,64 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "data-generator.fullname" . }}
+  labels:
+    app: {{ template "data-generator.name" . }}
+    chart: {{ template "data-generator.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "data-generator.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "data-generator.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      imagePullSecret:
+      - name: "rt-docker-reg-key"
+      initContainers:
+      - name: "remove-lost-found"
+        image: "{{ .Values.initContainerImage }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - 'sh'
+        - '-c'
+        - 'rm -rfv {{ .Values.persistence.mountPath }}/lost+found'
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.main.repository }}:{{ .Values.image.main.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - '/bin/sh'
+        - '-c'
+        - '${HOME}/helm-generator.sh -cl={{ .Values.generator.createList }} -l={{ .Values.generator.limit }} -r={{ .Values.generator.repo }}'
+        volumeMounts:
+        - name: helm-generator-volume
+          mountPath: {{ .Values.persistence.mountPath }}{{ .Values.generator.repo }}
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+      - name: {{ .Chart.Name }}-1
+        image: "{{ .Values.image.sidecar.repository }}:{{ .Values.image.sidecar.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - '/bin/sh'
+        - '-c'
+        - '${HOME}/chart-upload.sh --threads={{ .Values.artifactory.threads }} --rt-url={{ .Values.artifactory.url }} --username={{ .Values.artifactory.username }} --password={{ .Values.artifactory.password }} --rt-repo-path={{ .Values.artifactory.repoPath }} --repo={{ .Values.generator.repo }}'
+        volumeMounts:
+        - name: helm-generator-volume
+          mountPath: {{ .Values.persistence.mountPath }}{{ .Values.generator.repo }}
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+      - name: helm-generator-volume
+      {{- if .Values.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.ExistingClaim | default (include "data-generator.fullname" .) }}
+      {{- else }}
+        emptyDir: {}
+      {{- end -}}

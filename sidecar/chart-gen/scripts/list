@@ -1,0 +1,7 @@
+stable/kube-lego 0.3.0
+stable/kube-ops-view 0.4.1
+stable/kube-state-metrics 0.5.2
+stable/kube2iam 0.8.0
+stable/kubed 0.2.0
+stable/kubernetes-dashboard 0.5.1
+stable/lamp 0.1.0
