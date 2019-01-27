@@ -1,8 +1,8 @@
 ---
-name: Custom issue template
-about: CUSTOM TEMPLATE
+name: issue template
+about: Issue template
 title: ''
-labels: bug, duplicate, enhancement, good first issue, help wanted, question
+labels: ''
 assignees: ''
 
 ---
